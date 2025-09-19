@@ -17,11 +17,6 @@ export default function Topbar() {
           </div>
           
           <div className="flex items-center space-x-4">
-            {isConnected && (
-              <div className="text-sm text-gray-600">
-                Connected: {address?.slice(0, 6)}...{address?.slice(-4)}
-              </div>
-            )}
             <ConnectButton />
           </div>
         </div>

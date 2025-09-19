@@ -1,7 +1,7 @@
 'use client';
 
 import { useAccount, useReadContract } from 'wagmi';
-import { CURRENT_CONTRACT, ADMIN_ROLE } from '@/config/contracts';
+import { CURRENT_CONTRACT, ADMIN_ROLE } from '@/config/app';
 import { supportedChains } from '@/config/wagmi';
 import IssuerRegistryABI from '@/contracts/IssuerRegistry.json';
 

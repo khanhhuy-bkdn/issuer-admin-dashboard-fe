@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
-import { CURRENT_CONTRACT, ADMIN_ROLE } from '@/config/contracts';
+import { CURRENT_CONTRACT, ADMIN_ROLE } from '@/config/app';
 import IssuerRegistryContract from '@/contracts/IssuerRegistry.json';
 const { abi: IssuerRegistryABI } = IssuerRegistryContract;
 import { IssuerActionState, IssuerAction } from '@/types/issuer';

@@ -1,11 +1,11 @@
 import { getDefaultConfig } from '@rainbow-me/rainbowkit';
 import { hardhat, humanity } from 'wagmi/chains';
 import { defineChain } from 'viem';
-import { CURRENT_ENV } from './contracts';
+import { CURRENT_ENV, CONTRACT_CONFIG } from './app';
 
 // Define Humanity Testnet chain
 const humanityTestnet = defineChain({
-  id: 7080969,
+  id: CONTRACT_CONFIG.test.chainId,
   name: 'Humanity Testnet',
   network: 'humanity-testnet',
   nativeCurrency: {
