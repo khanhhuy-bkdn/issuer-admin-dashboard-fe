@@ -2,6 +2,7 @@ import { getDefaultConfig } from '@rainbow-me/rainbowkit';
 import { hardhat, humanity } from 'wagmi/chains';
 import { defineChain } from 'viem';
 import { CURRENT_ENV, CONTRACT_CONFIG } from './app';
+import type { Chain } from 'viem';
 
 // Define Humanity Testnet chain
 const humanityTestnet = defineChain({
@@ -27,15 +28,15 @@ const humanityTestnet = defineChain({
 });
 
 // Define chains based on environment
-const getChains = () => {
+const getChains = (): readonly [Chain, ...Chain[]] => {
   switch (CURRENT_ENV) {
     case 'prod':
-      return [humanity];
+      return [humanity] as const;
     case 'test':
-      return [humanityTestnet];
+      return [humanityTestnet] as const;
     case 'dev':
     default:
-      return [hardhat, humanityTestnet]; // Include testnet for dev
+      return [hardhat, humanityTestnet] as const; // Include testnet for dev
   }
 };
 
