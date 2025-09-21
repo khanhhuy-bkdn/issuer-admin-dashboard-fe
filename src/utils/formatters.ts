@@ -11,7 +11,7 @@ import { formatEther } from 'ethers';
  */
 export function formatFromWei(value: string): string {
   if (!value || value === '0') return '0';
-  
+
   try {
     return formatEther(value);
   } catch (error) {
@@ -26,11 +26,10 @@ export function formatFromWei(value: string): string {
  * @param decimals - Number of decimal places to show (default: 0 for integer)
  * @returns Formatted string
  */
-export function formatTokenAmount(value: string, decimals: number = 0): string {
+export function formatTokenAmount(value: string, maxDecimals: number = 18): string {
   const formatted = formatFromWei(value);
-  if (decimals === 0) {
-    return Math.floor(parseFloat(formatted)).toString();
-  }
-  
-  return parseFloat(formatted).toFixed(decimals);
+  const num = parseFloat(formatted);
+
+  if (Number.isNaN(num)) return "0";
+  return num.toFixed(maxDecimals).replace(/\.?0+$/, '');
 }

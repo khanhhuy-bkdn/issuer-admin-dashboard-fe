@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useReadContract } from 'wagmi';
 import { useIssuerActions } from '@/hooks/useIssuerActions';
+import { useCategoryData } from '@/hooks/useCategoryData';
 import IssuerRegistryABI from '@/contracts/IssuerRegistry.json';
 import { getApiUrl, API_CONFIG, CURRENT_CONTRACT } from '@/config/app';
 import { formatTokenAmount } from '@/utils/formatters';
@@ -10,7 +11,7 @@ import { formatTokenAmount } from '@/utils/formatters';
 interface PendingApplication {
   address: string;
   name: string;
-  requestedCategories: string;
+  requestedCategories: string[];
   proposedFixedFee: string;
   publicKey: string;
   stakeAmount: string;
@@ -50,7 +51,7 @@ export default function PendingApplicationsTable() {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timeout | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
-  
+
   const { approveIssuer, rejectIssuer, revokeIssuer, isLoading: actionLoading, txHash } = useIssuerActions();
 
   // Get pending applications count
@@ -60,12 +61,14 @@ export default function PendingApplicationsTable() {
     functionName: 'getPendingApplicationsCount',
   });
 
+
+
   // Fetch pending applications from API
   const fetchApplications = useCallback(async (page: number = 0, search: string = '') => {
     try {
       setIsLoading(true);
       setError(null);
-      
+
       const offset = page * limit;
       const queryParams = new URLSearchParams({
         status: 'pending',
@@ -73,15 +76,15 @@ export default function PendingApplicationsTable() {
         offset: offset.toString(),
         ...(search && { search })
       });
-      
+
       const response = await fetch(`${getApiUrl(API_CONFIG.endpoints.issuers)}?${queryParams}`);
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const data: ApiResponse = await response.json();
-      
+
       if (data.success) {
         setApplications(data.data.issuers);
         setTotal(data.meta.total);
@@ -110,7 +113,7 @@ export default function PendingApplicationsTable() {
         fetchApplications(currentPage, searchTerm);
       }, 30000); // Refresh every 30 seconds
       setRefreshInterval(interval);
-      
+
       return () => {
         if (interval) clearInterval(interval);
       };
@@ -141,18 +144,33 @@ export default function PendingApplicationsTable() {
     return () => clearTimeout(timeoutId);
   }, [searchTerm, fetchApplications]);
 
+  const allCategoryHashes = useMemo(() => {
+    const hashes: string[] = [];
+    for (const app of applications) {
+      try {
+        const parsed = app.requestedCategories;
+        hashes.push(...parsed);
+      } catch {
+        // ignore invalid JSON
+      }
+    }
+    return Array.from(new Set(hashes));
+  }, [applications]);
+
+  const { categoriesMap } = useCategoryData(allCategoryHashes);
+
   const handleApprove = async (address: string) => {
     const approveFixedFee = approveFixedFeeMap[address] || false;
-    
+
     try {
       await approveIssuer(address as `0x${string}`, approveFixedFee);
-      
+
       // Show success message
       console.log('Issuer approved successfully');
-      
+
       // Refresh applications after action
       await fetchApplications(currentPage, searchTerm);
-      
+
       // Clear the checkbox state
       setApproveFixedFeeMap(prev => {
         const newMap = { ...prev };
@@ -169,10 +187,10 @@ export default function PendingApplicationsTable() {
   const handleReject = async (address: string) => {
     try {
       await rejectIssuer(address as `0x${string}`);
-      
+
       // Show success message
       console.log('Issuer rejected successfully');
-      
+
       // Refresh applications after action
       await fetchApplications(currentPage, searchTerm);
     } catch (error) {
@@ -185,10 +203,10 @@ export default function PendingApplicationsTable() {
   const handleRevoke = async (address: string) => {
     try {
       await revokeIssuer(address as `0x${string}`);
-      
+
       // Show success message
       console.log('Issuer revoked successfully');
-      
+
       // Refresh applications after action
       await fetchApplications(currentPage, searchTerm);
     } catch (error) {
@@ -265,7 +283,7 @@ export default function PendingApplicationsTable() {
                 <span>Auto-refresh (30s)</span>
               </label>
             </div>
-            
+
             {/* Manual refresh button */}
             <button
               onClick={handleRefresh}
@@ -296,10 +314,10 @@ export default function PendingApplicationsTable() {
                 Categories
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Proposed Fee
+                Proposed Fixed Fee
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Stake Amount
+                Total Stake Amount
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Status
@@ -314,9 +332,28 @@ export default function PendingApplicationsTable() {
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {applications.map((application) => {
-              const categories = application.requestedCategories ? application.requestedCategories : [];
+              // Parse requestedCategories JSON string to get array of category hashes
+              let categoriesLabel = 'No categories';
+              try {
+                const categoryHashes = application.requestedCategories || [];
+                const categoryNames = (categoryHashes ?? [])
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  .map((h: any) => {
+                    const cat = categoriesMap[h];
+                    if (!cat) return null;
+                    return `${cat.name} - Base Fee: ${formatTokenAmount(cat.baseFee)} ETH`;
+                  })
+                  .filter(Boolean);
+                categoriesLabel = categoryNames.length
+                  ? categoryNames.join(', ')
+                  : 'No categories';
+              } catch (e) {
+                categoriesLabel = application.requestedCategories.length
+                  ? application.requestedCategories.join(', ')
+                  : 'No categories';
+              }
               const submittedDate = new Date(application.submittedAt).toLocaleDateString();
-              
+
               return (
                 <tr key={application.address} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -327,31 +364,25 @@ export default function PendingApplicationsTable() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {application.name}
                   </td>
-                  <td className="px-2 py-4 text-xs text-gray-900 w-20">
-                    <div 
-                      className="truncate cursor-help" 
-                      title={Array.isArray(categories) ? categories.join(', ') : 'No categories'}
+                  <td className="px-2 py-4 text-xs text-gray-900">
+                    <div
+                      className="truncate cursor-help"
+                      title={categoriesLabel || 'No categories'}
                     >
-                      {Array.isArray(categories) && categories.length > 0 ? (
-                        categories.length > 1 ? (
-                          <span className="text-blue-600">
-                            {categories[0]}...
-                          </span>
-                        ) : (
-                          <span className="text-blue-600">
-                            {categories[0]}
-                          </span>
-                        )
+                      {categoriesLabel ? (
+                        <span className="text-blue-600">
+                          {categoriesLabel.length > 50 ? `${categoriesLabel.substring(0, 50)}...` : categoriesLabel}
+                        </span>
                       ) : (
                         <span className="text-gray-500">None</span>
                       )}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {formatTokenAmount(application.proposedFixedFee, 3)} ETH
+                    {formatTokenAmount(application.proposedFixedFee)} ETH
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {formatTokenAmount(application.stakeAmount, 3)} ETH
+                    {formatTokenAmount(application.stakeAmount)} ETH
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
@@ -386,36 +417,36 @@ export default function PendingApplicationsTable() {
                         >
                           {actionLoading ? 'Processing...' : 'Approve'}
                         </button>
-                         <button
-                           onClick={() => handleReject(application.address)}
-                           disabled={actionLoading}
-                           className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                         >
-                           {actionLoading ? 'Processing...' : 'Reject'}
-                         </button>
-                         {/* <button
+                        <button
+                          onClick={() => handleReject(application.address)}
+                          disabled={actionLoading}
+                          className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {actionLoading ? 'Processing...' : 'Reject'}
+                        </button>
+                        {/* <button
                            onClick={() => handleRevoke(application.address)}
                            disabled={actionLoading}
                            className="inline-flex items-center px-3 py-1 border border-gray-300 text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                          >
                            {actionLoading ? 'Processing...' : 'Revoke'}
                          </button> */}
-                       </div>
-                     </div>
+                      </div>
+                    </div>
                   </td>
                 </tr>
               );
             })}
           </tbody>
         </table>
-        
+
         {applications.length === 0 && !isLoading && (
           <div className="text-center py-8 text-gray-500">
             {searchTerm ? 'No applications found matching your search.' : 'No pending applications found.'}
           </div>
         )}
       </div>
-      
+
       {/* Pagination Controls */}
       {total > limit && (
         <div className="px-6 py-4 border-t border-gray-200">
@@ -444,9 +475,9 @@ export default function PendingApplicationsTable() {
             </div>
           </div>
         </div>
-       )}
-       
-       {/* Transaction Hash Display */}
+      )}
+
+      {/* Transaction Hash Display */}
       {txHash && (
         <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
           <h3 className="text-sm font-medium text-green-800 mb-2">Transaction Successful</h3>
@@ -466,5 +497,5 @@ export default function PendingApplicationsTable() {
         </div>
       )}
     </div>
-   );
+  );
 }
