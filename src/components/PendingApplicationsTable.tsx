@@ -341,7 +341,7 @@ export default function PendingApplicationsTable() {
                   .map((h: any) => {
                     const cat = categoriesMap[h];
                     if (!cat) return null;
-                    return `${cat.name} - Base Fee: ${formatTokenAmount(cat.baseFee)} ETH`;
+                    return `${cat.name} - Base Fee: ${formatTokenAmount(cat.baseFee?.toString())} ETH`;
                   })
                   .filter(Boolean);
                 categoriesLabel = categoryNames.length
