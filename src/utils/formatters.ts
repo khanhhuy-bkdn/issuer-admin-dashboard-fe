@@ -1,4 +1,4 @@
-import { formatEther } from 'ethers';
+import { formatEther, formatUnits } from 'ethers';
 
 /**
  * Utility functions for formatting blockchain values using ethers.js
@@ -26,10 +26,11 @@ export function formatFromWei(value: string): string {
  * @param decimals - Number of decimal places to show (default: 0 for integer)
  * @returns Formatted string
  */
-export function formatTokenAmount(value: string, maxDecimals: number = 18): string {
-  const formatted = formatFromWei(value);
-  const num = parseFloat(formatted);
-
-  if (Number.isNaN(num)) return "0";
-  return num.toFixed(maxDecimals).replace(/\.?0+$/, '');
+export function formatTokenAmount(value: string, decimals: number = 18, maxDecimals = 6): string {
+  try {
+    const formatted = formatUnits(value, decimals);
+    return parseFloat(formatted).toFixed(maxDecimals).replace(/\.?0+$/, "");
+  } catch {
+    return "0";
+  }
 }
