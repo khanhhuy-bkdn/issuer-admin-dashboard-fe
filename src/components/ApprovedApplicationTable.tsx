@@ -115,7 +115,7 @@ export default function ApprovedIssuersTable() {
                 setRefreshInterval(null);
             }
         }
-    }, [autoRefresh, currentPage, searchTerm, fetchIssuers, refreshInterval]);
+    }, [autoRefresh, currentPage, searchTerm, fetchIssuers]);
 
     // Cleanup interval on unmount
     useEffect(() => {
