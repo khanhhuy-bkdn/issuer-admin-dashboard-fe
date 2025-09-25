@@ -19,7 +19,7 @@ export function useCategoryData(categoryHashes: string[]) {
     [categoryHashes]
   );
 
-  const { data, isLoading, error } = useReadContracts({
+  const { data, isLoading, error, refetch } = useReadContracts({
     contracts: uniqueHashes.map((hash) => ({
       address: CURRENT_CONTRACT.issuerRegistry as `0x${string}`,
       abi: IssuerRegistryABI.abi as Abi,
@@ -49,7 +49,7 @@ export function useCategoryData(categoryHashes: string[]) {
     return map;
   }, [data, uniqueHashes]);
 
-  return { categoriesMap, isLoading, error };
+  return { categoriesMap, isLoading, error, refetch };
 }
 
 export function getCategoryString(requestedCategories: string): string {

@@ -49,8 +49,6 @@ export function useAdminGuard(): AdminGuardState & AdminGuardActions {
     // The useReadContract hook will automatically refetch when dependencies change
   };
 
-  console.log("address", address?.toString())
-
   // Check if user is admin (either has admin role or is the owner matching ADMIN_WALLET)
   const isOwner = address?.toLowerCase() === ownerAddress?.toString().toLowerCase();
   const isAdminUser = hasAdminRole || isOwner;

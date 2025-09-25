@@ -27,6 +27,12 @@ export default function Topbar() {
             >
               Approved Issuers
             </Link>
+            <Link
+              href="/categories"
+              className={`text-lg font-medium hover:underline ${pathname === '/categories' ? 'text-green-600 underline' : 'font-medium text-gray-900'}`}
+            >
+              Categories
+            </Link>
           </div>
           <div className="flex items-center space-x-4">
             <ConnectButton />
